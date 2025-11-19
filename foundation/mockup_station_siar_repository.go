@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 
 	"github.com/weitecit/pkg/log"
+	"github.com/weitecit/pkg/utils"
 )
 
 type MockStationSiarRepository struct {
@@ -24,8 +25,8 @@ func (m *MockStationSiarRepository) ToJSON() string {
 
 func NewMockStationSIARRepository(request StationRequest) (MockStationSiarRepository, error) {
 	repo := MockStationSiarRepository{
-		APIKey:      "_1dFj0issvt8bd_Kz2TNQ9mLKdbwG55xzjJpHsoA_zHhYvOYi_",
-		BaseURL:     "https://servicio.mapama.gob.es/apisiar/API/v1/Datos/Semanales/Estacion",
+		APIKey:      utils.GetEnv("STATION_SIA_APIKEY"),
+		BaseURL:     utils.GetEnv("STATION_SIA_URL"),
 		StationName: request.StationName,
 		DateRange:   request.DateRange,
 	}
