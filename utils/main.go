@@ -200,11 +200,33 @@ func Normalize(str string) string {
 }
 
 func NormalizeKey(str string) string {
-	str = strings.ReplaceAll(str, " ", "_")
-	str = strings.ToLower(str)
-	str = RemoveAccents(str)
-	return str
+	// Pasar a minúsculas
+	s := strings.ToLower(str)
 
+	// Separar acentos (NFD) y eliminar marcas de acento
+	s = norm.NFD.String(s)
+	s = strings.Map(func(r rune) rune {
+		if unicode.Is(unicode.Mn, r) {
+			return -1
+		}
+		return r
+	}, s)
+
+	// Reemplazar espacios por guion bajo
+	s = strings.ReplaceAll(s, " ", "_")
+
+	// Quitar caracteres que no sean alfanuméricos o guion bajo
+	re := regexp.MustCompile(`[^\w_]`)
+	s = re.ReplaceAllString(s, "")
+
+	// Normalizar guiones bajos múltiples
+	reMultiUnderscore := regexp.MustCompile(`_+`)
+	s = reMultiUnderscore.ReplaceAllString(s, "_")
+
+	// Quitar guion bajo inicial o final
+	s = strings.Trim(s, "_")
+
+	return s
 }
 
 func NormalizeFile(str string) string {
