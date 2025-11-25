@@ -199,6 +199,14 @@ func Normalize(str string) string {
 	return str
 }
 
+func NormalizeKey(str string) string {
+	str = strings.ReplaceAll(str, " ", "_")
+	str = strings.ToLower(str)
+	str = RemoveAccents(str)
+	return str
+
+}
+
 func NormalizeFile(str string) string {
 	str = Normalize(str)
 	str = strings.ReplaceAll(str, "/", " ")
