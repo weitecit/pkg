@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
 	"encoding/base64"
@@ -1898,6 +1899,16 @@ func GetStrFromObjecID(id *primitive.ObjectID) (string, error) {
 func ToRaw(model interface{}) []byte {
 	raw, _ := json.Marshal(model)
 	return raw
+}
+
+func ToBuffer(model map[string]interface{}) *bytes.Buffer {
+
+	jsonBody, err := json.Marshal(model)
+	if err != nil {
+		return &bytes.Buffer{}
+	}
+
+	return bytes.NewBuffer(jsonBody)
 }
 
 func FromRaw(raw []byte, model interface{}) error {
