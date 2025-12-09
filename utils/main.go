@@ -2297,10 +2297,10 @@ func GetEnv(key string) string {
 	return os.Getenv(key)
 }
 
-func GetEnvInt(key string) int {
+func GetEnvInt(key string, defaultValue int) int {
 	value, err := strconv.Atoi(os.Getenv(key))
 	if err != nil {
-		return 0
+		return defaultValue
 	}
 	return value
 }
