@@ -314,6 +314,10 @@ func (m *User) Delete(request *BaseRequest) BaseResponse {
 	request.SetFindOptions(m.GetFindOptions(request))
 	request.Model = m
 
+	if m.DeletedBy != nil {
+		return m.BaseDelete(*request)
+	}
+
 	return m.BaseDeleteSoft(*request)
 
 }
