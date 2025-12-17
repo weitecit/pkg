@@ -21,6 +21,13 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
+type mailData struct {
+	From    string `json:"from"`
+	To      string `json:"to"`
+	Subject string `json:"subject"`
+	Body    string `json:"body"`
+}
+
 // newBaseRequestWithModel allows tests to override foundation.NewBaseRequestWithModel
 var newBaseRequestWithModel = func(model *foundation.User, user foundation.User) (*foundation.BaseRequest, error) {
 	return foundation.NewBaseRequestWithModel(model, user)
@@ -178,107 +185,41 @@ func UpdateToken(token string) (string, error) {
 
 }
 
-// SendEmail envía un correo electrónico de recuperación de contraseña al destinatario especificado.
+// TODO: que alguien estudie interfaces por favor
+func SendEmail(to string, subject string, body string) error {
+
+	mailData := mailData{
+		From:    "it@weitec.es",
+		To:      to,
+		Subject: subject,
+		Body:    body,
+	}
+
+	err := sendMicrosoftGraphEmail(mailData)
+	if err != nil {
+		log.ToDiscord(log.HookChannelLog, "❌ Error en SendEmail (Envío): "+err.Error())
+		return fmt.Errorf("error al enviar el correo electrónico a %s sobre %s", to, subject)
+	}
+
+	// Éxito: notificar a Discord
+	successMsg := fmt.Sprintf("✅ Correo a %s sobre %s enviado exitosamente", to, subject)
+	fmt.Println(successMsg)
+	log.ToDiscord(log.HookChannelLog, successMsg)
+	return nil
+}
+
+// SendEmailRecovery envía un correo electrónico de recuperación de contraseña al destinatario especificado.
 // Utiliza Microsoft Graph API para enviar el correo electrónico y notifica a Discord sobre el estado de la operación.
 // Devuelve un error genérico si ocurre algún problema durante el proceso.
-func SendEmail(to string, recoveryToken string) error {
-	// Obtener configuración de entorno
-	from := "it@weitec.es"
-	clientID := utils.GetEnv("OAUTH_CLIENT_ID")
-	clientSecret := utils.GetEnv("OAUTH_CLIENT_SECRET")
-	tenantID := utils.GetEnv("OAUTH_TENANT_ID")
-	microsoftClient := utils.GetEnv("MICROSOFT_CLIENT")
-	landingPage := utils.GetEnv("LANDING_URI")
-
-	// Validar variables de entorno requeridas
-	if clientID == "" || clientSecret == "" || tenantID == "" || microsoftClient == "" || landingPage == "" {
-		errMsg := fmt.Sprintf("Faltan variables de entorno requeridas: OAUTH_CLIENT_ID=%t, OAUTH_TENANT_ID=%t, MICROSOFT_CLIENT=%t, LANDING_URI=%t",
-			clientID != "", tenantID != "", microsoftClient != "", landingPage != "")
+func SendEmailRecovery(to string, recoveryToken string) error {
+	landingPage := utils.GetEnv("LANDING_URI") + "/reset-password"
+	if landingPage == "" {
+		errMsg := "Falta variable de entorno requerida: LANDING_URI"
 		log.ToDiscord(log.HookChannelLog, "❌ Error en SendEmail: "+errMsg)
-		return fmt.Errorf("error de configuración del servidor") // Mensaje genérico para el frontend
-	}
-
-	tokenURL := fmt.Sprintf(microsoftClient, tenantID)
-
-	// Preparar datos para la solicitud de token
-	data := url.Values{}
-	data.Set("client_id", clientID)
-	data.Set("client_secret", clientSecret)
-	data.Set("scope", "https://graph.microsoft.com/.default")
-	data.Set("grant_type", "client_credentials")
-
-	// Crear y enviar solicitud de token
-	tokenReq, err := http.NewRequest("POST", tokenURL, strings.NewReader(data.Encode()))
-	if err != nil {
-		errMsg := fmt.Sprintf("Error creando request de token: %v", err)
-		log.ToDiscord(log.HookChannelLog, "❌ Error en SendEmail: "+errMsg)
-		return fmt.Errorf("error de configuración del servidor") // Mensaje genérico para el frontend
-	}
-	tokenReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-
-	// Configurar cliente HTTP con timeout
-	client := cloneHttpClient()
-
-	// Enviar la solicitud de token
-	tokenResp, err := client.Do(tokenReq)
-	if err != nil {
-		errMsg := fmt.Sprintf("Error al realizar la solicitud de token: %v", err)
-		log.ToDiscord(log.HookChannelLog, "❌ Error en SendEmail: "+errMsg)
-		fmt.Printf("[DEBUG] Error en la solicitud de token: %v\n", err)
-		return fmt.Errorf("error de configuración del servidor") // Mensaje genérico para el frontend
-	}
-	defer tokenResp.Body.Close()
-
-	// Leer el cuerpo de la respuesta para tenerlo disponible en caso de error
-	bodyBytes, _ := io.ReadAll(tokenResp.Body)
-	fmt.Printf("[DEBUG] Respuesta de autenticación (Status: %d): %s\n", tokenResp.StatusCode, string(bodyBytes))
-
-	var tokenData struct {
-		AccessToken string `json:"access_token"`
-		ExpiresIn   int    `json:"expires_in"`
-		TokenType   string `json:"token_type"`
-		Error       string `json:"error"`
-		Description string `json:"error_description"`
-	}
-
-	// Decodificar la respuesta
-	if err := json.Unmarshal(bodyBytes, &tokenData); err != nil {
-		errMsg := fmt.Sprintf("Error decodificando respuesta de token: %v. Respuesta: %s", err, string(bodyBytes))
-		log.ToDiscord(log.HookChannelLog, "❌ Error en SendEmail: "+errMsg)
-		return fmt.Errorf("error de configuración del servidor") // Mensaje genérico para el frontend
-	}
-
-	// Verificar si hay un error en la respuesta
-	if tokenData.Error != "" {
-		errMsg := fmt.Sprintf("Error en la respuesta de autenticación: %s - %s", tokenData.Error, tokenData.Description)
-
-		// Log detallado para depuración
-		fmt.Printf("[DEBUG] Error de autenticación: %+v\n", tokenData)
-
-		// Verificar específicamente si el token expiró
-		if strings.Contains(strings.ToLower(tokenData.Description), "expir") ||
-			tokenData.Error == "invalid_grant" {
-			errMsg = "⚠️ ATENCIÓN: El token de autenticación ha expirado. Se requiere renovación de credenciales."
-			log.ToDiscord(log.HookChannelLog, "❌ Error en SendEmail: "+errMsg)
-			return fmt.Errorf("el token de autenticación ha expirado, por favor contacte con soporte")
-		}
-
-		// Otros errores de autenticación
-		log.ToDiscord(log.HookChannelLog, "❌ Error en SendEmail: "+errMsg)
-		fmt.Printf("[DEBUG] Error detallado: %s\n", errMsg)
-		return fmt.Errorf("error de autenticación con el servicio de correo")
-	}
-
-	if tokenData.AccessToken == "" {
-		errMsg := fmt.Sprintf("No se recibió token de acceso. Respuesta: %s", string(bodyBytes))
-		log.ToDiscord(log.HookChannelLog, "❌ Error en SendEmail: "+errMsg)
-		return fmt.Errorf("error al obtener token de acceso")
+		return fmt.Errorf("error de configuración del servidor")
 	}
 
 	resetURL := fmt.Sprintf(landingPage+"%s", recoveryToken)
-	println("•••••••••••••••••••••••••••••••••")
-	println("resetURL", resetURL)
-	println("•••••••••••••••••••••••••••••••••")
 	body := fmt.Sprintf(`
 		<html>
 		<body>
@@ -295,70 +236,18 @@ func SendEmail(to string, recoveryToken string) error {
 		</html>
 	`, resetURL)
 
-	graphEndpoint := fmt.Sprintf("https://graph.microsoft.com/v1.0/users/%s/sendMail", from)
-	emailData := map[string]interface{}{
-		"message": map[string]interface{}{
-			"subject":    "Recuperación de contraseña - Weitec",
-			"importance": "high",
-			"body": map[string]interface{}{
-				"contentType": "HTML",
-				"content":     body,
-			},
-			"toRecipients": []map[string]interface{}{
-				{
-					"emailAddress": map[string]string{
-						"address": to,
-					},
-				},
-			},
-		},
-		"saveToSentItems": true,
-	}
-
-	// Crear el JSON para el correo electrónico
-	jsonData, err := json.Marshal(emailData)
-	if err != nil {
-		errMsg := fmt.Sprintf("Error creando JSON para el correo: %v", err)
-		log.ToDiscord(log.HookChannelLog, "❌ Error en SendEmail: "+errMsg)
-		return fmt.Errorf("error al enviar el correo electrónico")
-	}
-
-	// Crear la solicitud para enviar el correo
-	mailReq, err := http.NewRequest("POST", graphEndpoint, bytes.NewBuffer(jsonData))
-	if err != nil {
-		errMsg := fmt.Sprintf("Error creando solicitud de envío de correo: %v", err)
-		log.ToDiscord(log.HookChannelLog, "❌ Error en SendEmail: "+errMsg)
-		return fmt.Errorf("error al enviar el correo electrónico")
-	}
-
-	// Configurar encabezados de la solicitud
-	mailReq.Header.Set("Authorization", fmt.Sprintf("Bearer %s", tokenData.AccessToken))
-	mailReq.Header.Set("Content-Type", "application/json")
-
-	// Enviar la solicitud
 	log.ToDiscord(log.HookChannelLog, fmt.Sprintf("📤 Enviando correo de recuperación a: %s", to))
-	resp, err := client.Do(mailReq)
-	if err != nil {
-		errMsg := fmt.Sprintf("Error al enviar el correo electrónico: %v", err)
-		log.ToDiscord(log.HookChannelLog, "❌ Error en SendEmail: "+errMsg)
-		return fmt.Errorf("error al enviar el correo electrónico")
+
+	mailData := mailData{
+		From:    "it@weitec.es",
+		To:      to,
+		Subject: "Recuperación de contraseña - Weitec",
+		Body:    body,
 	}
-	defer resp.Body.Close()
 
-	// Leer el cuerpo de la respuesta para registrarlo en caso de error
-	respBody, _ := io.ReadAll(resp.Body)
-
-	// Verificar el código de estado de la respuesta
-	if resp.StatusCode != http.StatusAccepted && resp.StatusCode != http.StatusOK {
-		// Enviar notificación de error a Discord con más detalles
-		discordMsg := fmt.Sprintf("❌ Error al enviar correo a %s:\nCódigo: %d\nRespuesta: %s\nHeaders: %v",
-			to, resp.StatusCode, string(respBody), resp.Header)
-		if len(discordMsg) > 1900 { // Limitar la longitud del mensaje para Discord
-			discordMsg = discordMsg[:1900] + "..."
-		}
-		log.ToDiscord(log.HookChannelLog, discordMsg)
-
-		// Devolver un mensaje genérico al frontend
+	err := sendMicrosoftGraphEmail(mailData)
+	if err != nil {
+		log.ToDiscord(log.HookChannelLog, "❌ Error en SendEmail (Envío): "+err.Error())
 		return fmt.Errorf("error al enviar el correo electrónico")
 	}
 
@@ -370,46 +259,6 @@ func SendEmail(to string, recoveryToken string) error {
 }
 
 func SendEmailMobile(to, recoveryCode string) error {
-	from := "it@weitec.es"
-	clientID := utils.GetEnv("OAUTH_CLIENT_ID")
-	clientSecret := utils.GetEnv("OAUTH_CLIENT_SECRET")
-	tenantID := utils.GetEnv("OAUTH_TENANT_ID")
-	microsoftClient := utils.GetEnv("MICROSOFT_CLIENT")
-	tokenURL := fmt.Sprintf(microsoftClient, tenantID)
-
-	data := url.Values{}
-	data.Set("client_id", clientID)
-	data.Set("client_secret", clientSecret)
-	data.Set("scope", "https://graph.microsoft.com/.default")
-	data.Set("grant_type", "client_credentials")
-
-	tokenReq, err := http.NewRequest("POST", tokenURL, strings.NewReader(data.Encode()))
-	if err != nil {
-		return fmt.Errorf("error creando request de token: %v", err)
-	}
-	tokenReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-
-	client := cloneHttpClient()
-	tokenResp, err := client.Do(tokenReq)
-	if err != nil {
-		return fmt.Errorf("error obteniendo token: %v", err)
-	}
-	defer tokenResp.Body.Close()
-
-	var tokenData struct {
-		AccessToken string `json:"access_token"`
-		ExpiresIn   int    `json:"expires_in"`
-		TokenType   string `json:"token_type"`
-	}
-
-	if err := json.NewDecoder(tokenResp.Body).Decode(&tokenData); err != nil {
-		return fmt.Errorf("error decodificando respuesta de token: %v", err)
-	}
-
-	if tokenData.AccessToken == "" {
-		bodyBytes, _ := io.ReadAll(tokenResp.Body)
-		return fmt.Errorf("no se recibió token de acceso. Respuesta: %s", string(bodyBytes))
-	}
 
 	body := fmt.Sprintf(`
 		<html>
@@ -425,19 +274,106 @@ func SendEmailMobile(to, recoveryCode string) error {
 		</html>
 	`, recoveryCode)
 
-	graphEndpoint := fmt.Sprintf("https://graph.microsoft.com/v1.0/users/%s/sendMail", from)
+	mailData := mailData{
+		From:    "it@weitec.es",
+		To:      to,
+		Subject: "Código de recuperación - Weitec",
+		Body:    body,
+	}
+	err := sendMicrosoftGraphEmail(mailData)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Email de recuperación enviado exitosamente a: %s\n", to)
+	return nil
+}
+
+// Estructura para la respuesta del token de Graph API
+type graphTokenResponse struct {
+	AccessToken string `json:"access_token"`
+	ExpiresIn   int    `json:"expires_in"`
+	TokenType   string `json:"token_type"`
+	Error       string `json:"error"`
+	Description string `json:"error_description"`
+}
+
+// getMicrosoftGraphToken obtiene el token de acceso para Microsoft Graph API
+func getMicrosoftGraphToken() (string, error) {
+	clientID := utils.GetEnv("OAUTH_CLIENT_ID")
+	clientSecret := utils.GetEnv("OAUTH_CLIENT_SECRET")
+	tenantID := utils.GetEnv("OAUTH_TENANT_ID")
+	microsoftClient := utils.GetEnv("MICROSOFT_CLIENT")
+
+	if clientID == "" || clientSecret == "" || tenantID == "" || microsoftClient == "" {
+		return "", fmt.Errorf("faltan variables de entorno requeridas para Microsoft Graph")
+	}
+
+	tokenURL := fmt.Sprintf(microsoftClient, tenantID)
+
+	data := url.Values{}
+	data.Set("client_id", clientID)
+	data.Set("client_secret", clientSecret)
+	data.Set("scope", "https://graph.microsoft.com/.default")
+	data.Set("grant_type", "client_credentials")
+
+	tokenReq, err := http.NewRequest("POST", tokenURL, strings.NewReader(data.Encode()))
+	if err != nil {
+		return "", fmt.Errorf("error creando request de token: %v", err)
+	}
+	tokenReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	client := cloneHttpClient()
+	tokenResp, err := client.Do(tokenReq)
+	if err != nil {
+		return "", fmt.Errorf("error obteniendo token: %v", err)
+	}
+	defer tokenResp.Body.Close()
+
+	bodyBytes, _ := io.ReadAll(tokenResp.Body)
+
+	var tokenData graphTokenResponse
+	if err := json.Unmarshal(bodyBytes, &tokenData); err != nil {
+		return "", fmt.Errorf("error decodificando respuesta de token: %v. Body: %s", err, string(bodyBytes))
+	}
+
+	if tokenData.Error != "" {
+		errMsg := fmt.Sprintf("Error en la respuesta de autenticación: %s - %s", tokenData.Error, tokenData.Description)
+		// Comprobar errores específicos si es necesario, similar a la implementación original
+		if strings.Contains(strings.ToLower(tokenData.Description), "expir") || tokenData.Error == "invalid_grant" {
+			return "", fmt.Errorf("el token de autenticación ha expirado")
+		}
+		return "", fmt.Errorf("%s", errMsg)
+	}
+
+	if tokenData.AccessToken == "" {
+		return "", fmt.Errorf("no se recibió token de acceso. Respuesta: %s", string(bodyBytes))
+	}
+
+	return tokenData.AccessToken, nil
+}
+
+// sendMicrosoftGraphEmail hace la llamada a Graph API para enviar el email
+func sendMicrosoftGraphEmail(mailData mailData) error {
+
+	if mailData.From == "" {
+		mailData.From = "it@weitec.es"
+	}
+
+	graphEndpoint := fmt.Sprintf("https://graph.microsoft.com/v1.0/users/%s/sendMail", mailData.From)
+
 	emailData := map[string]interface{}{
 		"message": map[string]interface{}{
-			"subject":    "Código de recuperación - Weitec",
+			"subject":    mailData.Subject,
 			"importance": "high",
 			"body": map[string]interface{}{
 				"contentType": "HTML",
-				"content":     body,
+				"content":     mailData.Body,
 			},
 			"toRecipients": []map[string]interface{}{
 				{
 					"emailAddress": map[string]string{
-						"address": to,
+						"address": mailData.To,
 					},
 				},
 			},
@@ -447,30 +383,35 @@ func SendEmailMobile(to, recoveryCode string) error {
 
 	jsonData, err := json.Marshal(emailData)
 	if err != nil {
-		return fmt.Errorf("error creando JSON: %v", err)
+		return fmt.Errorf("error creando JSON para el correo: %v", err)
 	}
 
 	mailReq, err := http.NewRequest("POST", graphEndpoint, bytes.NewBuffer(jsonData))
 	if err != nil {
-		return fmt.Errorf("error creando request: %v", err)
+		return fmt.Errorf("error creando solicitud de envío: %v", err)
 	}
 
-	mailReq.Header.Set("Authorization", fmt.Sprintf("Bearer %s", tokenData.AccessToken))
+	accessToken, err := getMicrosoftGraphToken()
+	if err != nil {
+		log.ToDiscord(log.HookChannelLog, "❌ Error en SendEmail (Token): "+err.Error())
+		return fmt.Errorf("error de configuración del servidor") // Mensaje genérico para el frontend
+	}
+
+	mailReq.Header.Set("Authorization", fmt.Sprintf("Bearer %s", accessToken))
 	mailReq.Header.Set("Content-Type", "application/json")
 
+	client := cloneHttpClient()
 	resp, err := client.Do(mailReq)
 	if err != nil {
-		return fmt.Errorf("error enviando email: %v", err)
+		return fmt.Errorf("error en la petición de envío: %v", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusAccepted && resp.StatusCode != http.StatusOK {
 		bodyBytes, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("error del servidor Graph API (%d): %s\nHeaders: %v",
-			resp.StatusCode, string(bodyBytes), resp.Header)
+		return fmt.Errorf("error Graph API (%d): %s", resp.StatusCode, string(bodyBytes))
 	}
 
-	fmt.Printf("Email de recuperación enviado exitosamente a: %s\n", to)
 	return nil
 }
 
@@ -681,7 +622,7 @@ func ProcessPasswordRecovery(email, xForwardedFor, xRealIP, remoteAddr, userAgen
 		return fmt.Errorf("error generating recovery token: %v", err)
 	}
 
-	if err := SendEmail(email, recoveryToken); err != nil {
+	if err := SendEmailRecovery(email, recoveryToken); err != nil {
 		return fmt.Errorf("error sending recovery email: %v", err)
 	}
 

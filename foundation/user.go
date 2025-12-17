@@ -19,6 +19,13 @@ type UserLog struct {
 	Time time.Time `json:"time" bson:"time"`
 }
 
+type SysNotify utils.Enum
+
+const (
+	SysNotifyNone            SysNotify = ""
+	SysNotifyReportPublished SysNotify = "report_published"
+)
+
 func GetUserByID(id string) (*User, error) {
 	user := &User{}
 	user.ID = utils.GetObjectIdFromStringRaw(id)
@@ -61,6 +68,7 @@ type (
 		Session       DateRange       `json:"session" bson:"session"`
 		ExternalToken string          `json:"external_token" bson:"external_token"`
 		Avatar        string          `json:"avatar" bson:"avatar"`
+		SysNotify     []SysNotify     `json:"sys_notify" bson:"sys_notify"`
 		Roles         RolePermissions `json:"roles" bson:"-"`
 		RolePermission
 		SpaceID        string `json:"space_id" bson:"-"`
@@ -508,4 +516,16 @@ func (m *User) GetFromMap(token map[string]interface{}) error {
 	}
 
 	return nil
+}
+
+func (m *User) HasSysNotify(sysNotify SysNotify) bool {
+	if m.SysNotify == nil {
+		return false
+	}
+	for _, notify := range m.SysNotify {
+		if notify == sysNotify {
+			return true
+		}
+	}
+	return false
 }

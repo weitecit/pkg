@@ -345,7 +345,7 @@ func TestSendEmail_EnvMissing(t *testing.T) {
 		}
 	}
 
-	err := SendEmail("test@dominio.com", "token123")
+	err := SendEmailRecovery("test@dominio.com", "token123")
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "error de configuración del servidor")
 }
@@ -383,7 +383,7 @@ func TestSendEmail_Success(t *testing.T) {
 		}
 	}
 
-	err := SendEmail("test@dominio.com", "token123")
+	err := SendEmailRecovery("test@dominio.com", "token123")
 	require.NoError(t, err)
 }
 
@@ -421,7 +421,7 @@ func TestSendEmail(t *testing.T) {
 				}),
 			}
 		}
-		err := SendEmail("test@dominio.com", "token123")
+		err := SendEmailRecovery("test@dominio.com", "token123")
 		require.NoError(t, err)
 	})
 
@@ -432,7 +432,7 @@ func TestSendEmail(t *testing.T) {
 		defer func() { cloneHttpClient = originalClone }()
 		// Forzar error en NewRequest usando un clientID inválido (URL mal formada)
 		os.Setenv("MICROSOFT_CLIENT", "://bad-url")
-		err := SendEmail("test@dominio.com", "token123")
+		err := SendEmailRecovery("test@dominio.com", "token123")
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "error de configuración del servidor")
 	})
@@ -449,7 +449,7 @@ func TestSendEmail(t *testing.T) {
 				}),
 			}
 		}
-		err := SendEmail("test@dominio.com", "token123")
+		err := SendEmailRecovery("test@dominio.com", "token123")
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "error de configuración del servidor")
 	})
@@ -466,7 +466,7 @@ func TestSendEmail(t *testing.T) {
 				}),
 			}
 		}
-		err := SendEmail("test@dominio.com", "token123")
+		err := SendEmailRecovery("test@dominio.com", "token123")
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "error de configuración del servidor")
 	})
@@ -483,7 +483,7 @@ func TestSendEmail(t *testing.T) {
 				}),
 			}
 		}
-		err := SendEmail("test@dominio.com", "token123")
+		err := SendEmailRecovery("test@dominio.com", "token123")
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "el token de autenticación ha expirado")
 	})
@@ -500,7 +500,7 @@ func TestSendEmail(t *testing.T) {
 				}),
 			}
 		}
-		err := SendEmail("test@dominio.com", "token123")
+		err := SendEmailRecovery("test@dominio.com", "token123")
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "error al obtener token de acceso")
 	})
@@ -522,7 +522,7 @@ func TestSendEmail(t *testing.T) {
 				}),
 			}
 		}
-		err := SendEmail("test@dominio.com", "token123")
+		err := SendEmailRecovery("test@dominio.com", "token123")
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "error al enviar el correo electrónico")
 	})
@@ -544,7 +544,7 @@ func TestSendEmail(t *testing.T) {
 				}),
 			}
 		}
-		err := SendEmail("test@dominio.com", "token123")
+		err := SendEmailRecovery("test@dominio.com", "token123")
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "error al enviar el correo electrónico")
 	})
