@@ -212,7 +212,7 @@ func SendEmail(to string, subject string, body string) error {
 // Utiliza Microsoft Graph API para enviar el correo electrónico y notifica a Discord sobre el estado de la operación.
 // Devuelve un error genérico si ocurre algún problema durante el proceso.
 func SendEmailRecovery(to string, recoveryToken string) error {
-	landingPage := utils.GetEnv("LANDING_URI") + "/reset-password"
+	landingPage := utils.GetEnv("LANDING_URI") + "/reset-password/"
 	if landingPage == "" {
 		errMsg := "Falta variable de entorno requerida: LANDING_URI"
 		log.ToDiscord(log.HookChannelLog, "❌ Error en SendEmail: "+errMsg)
