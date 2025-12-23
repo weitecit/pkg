@@ -186,7 +186,7 @@ func UpdateToken(token string) (string, error) {
 }
 
 // TODO: que alguien estudie interfaces por favor
-func SendEmail(to string, subject string, body string) error {
+func SendEmail(to string, subject string, body string, channel log.HookChannel) error {
 
 	mailData := mailData{
 		From:    "it@weitec.es",
@@ -195,16 +195,20 @@ func SendEmail(to string, subject string, body string) error {
 		Body:    body,
 	}
 
+	if channel == log.HookChannelNone {
+		channel = log.HookChannelLog
+	}
+
 	err := sendMicrosoftGraphEmail(mailData)
 	if err != nil {
-		log.ToDiscord(log.HookChannelLog, "❌ Error en SendEmail (Envío): "+err.Error())
+		log.ToDiscord(channel, "❌ Error en SendEmail (Envío): "+err.Error())
 		return fmt.Errorf("error al enviar el correo electrónico a %s sobre %s", to, subject)
 	}
 
 	// Éxito: notificar a Discord
 	successMsg := fmt.Sprintf("✅ Correo a %s sobre %s enviado exitosamente", to, subject)
 	fmt.Println(successMsg)
-	log.ToDiscord(log.HookChannelLog, successMsg)
+	log.ToDiscord(channel, successMsg)
 	return nil
 }
 

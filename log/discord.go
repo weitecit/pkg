@@ -13,12 +13,13 @@ import (
 type HookChannel string
 
 var (
-	HookChannelNone HookChannel = ""
-	HookChannelPro  HookChannel = HookChannel(os.Getenv("DISCORD_CHANNEL_PRO"))
-	HookChannelDemo HookChannel = HookChannel(os.Getenv("DISCORD_CHANNEL_DEMO"))
-	HookChannelODM  HookChannel = HookChannel(os.Getenv("DISCORD_CHANNEL_ODM"))
-	HookChannelLog  HookChannel = HookChannel(os.Getenv("DISCORD_CHANNEL_LOG"))
-	HookChannelErr  HookChannel = HookChannel(os.Getenv("DISCORD_CHANNEL_ERR"))
+	HookChannelNone   HookChannel = ""
+	HookChannelPro    HookChannel = HookChannel(os.Getenv("DISCORD_CHANNEL_PRO"))
+	HookChannelDemo   HookChannel = HookChannel(os.Getenv("DISCORD_CHANNEL_DEMO"))
+	HookChannelODM    HookChannel = HookChannel(os.Getenv("DISCORD_CHANNEL_ODM"))
+	HookChannelLog    HookChannel = HookChannel(os.Getenv("DISCORD_CHANNEL_LOG"))
+	HookChannelErr    HookChannel = HookChannel(os.Getenv("DISCORD_CHANNEL_ERR"))
+	HookChannelAgtech HookChannel = HookChannel(os.Getenv("DISCORD_CHANNEL_AGTECH"))
 )
 
 type Message struct {
