@@ -119,7 +119,7 @@ func (m SpaceMembers) GetMember(userID string) (SpaceMember, bool) {
 	return SpaceMember{}, false
 }
 
-func (m SpaceMembers) RemoveMember(userID string, user User) (SpaceMembers, error) {
+func (m SpaceMembers) RemoveMember(userID string) (SpaceMembers, error) {
 
 	if userID == "" {
 		return m, errors.New("SpaceMembers.RemoveMember: userID is empty")
