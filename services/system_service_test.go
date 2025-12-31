@@ -558,7 +558,7 @@ func TestSendEmailMobile_EnvMissing(t *testing.T) {
 
 	err := SendEmailMobile("test@dominio.com", "123456")
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "error creando request de token")
+	require.Contains(t, err.Error(), "error de configuración del servidor")
 }
 
 func TestSendEmailMobileResto(t *testing.T) {
@@ -655,7 +655,7 @@ func TestSendEmailMobileResto(t *testing.T) {
 		}
 		err := SendEmailMobile("test@dominio.com", "123456")
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "no se recibió token de acceso")
+		require.Contains(t, err.Error(), "error al obtener token de acceso")
 	})
 
 	t.Run("error enviando email", func(t *testing.T) {

@@ -202,7 +202,7 @@ func SendEmail(to string, subject string, body string, channel log.HookChannel) 
 	err := sendMicrosoftGraphEmail(mailData)
 	if err != nil {
 		log.ToDiscord(channel, "❌ Error en SendEmail (Envío): "+err.Error())
-		return fmt.Errorf("error al enviar el correo electrónico a %s sobre %s", to, subject)
+		return fmt.Errorf("error al enviar el correo electrónico a %s sobre %s: %w", to, subject, err)
 	}
 
 	// Éxito: notificar a Discord
@@ -216,14 +216,14 @@ func SendEmail(to string, subject string, body string, channel log.HookChannel) 
 // Utiliza Microsoft Graph API para enviar el correo electrónico y notifica a Discord sobre el estado de la operación.
 // Devuelve un error genérico si ocurre algún problema durante el proceso.
 func SendEmailRecovery(to string, recoveryToken string) error {
-	landingPage := utils.GetEnv("LANDING_URI") + "/reset-password/"
-	if landingPage == "" {
+	landingURI := utils.GetEnv("LANDING_URI")
+	if landingURI == "" {
 		errMsg := "Falta variable de entorno requerida: LANDING_URI"
 		log.ToDiscord(log.HookChannelLog, "❌ Error en SendEmail: "+errMsg)
 		return fmt.Errorf("error de configuración del servidor")
 	}
 
-	resetURL := fmt.Sprintf(landingPage+"%s", recoveryToken)
+	resetURL := fmt.Sprintf("%s/reset-password/%s", landingURI, recoveryToken)
 	body := fmt.Sprintf(`
 		<html>
 		<body>
@@ -252,7 +252,7 @@ func SendEmailRecovery(to string, recoveryToken string) error {
 	err := sendMicrosoftGraphEmail(mailData)
 	if err != nil {
 		log.ToDiscord(log.HookChannelLog, "❌ Error en SendEmail (Envío): "+err.Error())
-		return fmt.Errorf("error al enviar el correo electrónico")
+		return fmt.Errorf("error al enviar el correo electrónico: %w", err)
 	}
 
 	// Éxito: notificar a Discord
@@ -286,7 +286,7 @@ func SendEmailMobile(to, recoveryCode string) error {
 	}
 	err := sendMicrosoftGraphEmail(mailData)
 	if err != nil {
-		return err
+		return fmt.Errorf("error enviando email: %w", err)
 	}
 
 	fmt.Printf("Email de recuperación enviado exitosamente a: %s\n", to)
@@ -351,7 +351,7 @@ func getMicrosoftGraphToken() (string, error) {
 	}
 
 	if tokenData.AccessToken == "" {
-		return "", fmt.Errorf("no se recibió token de acceso. Respuesta: %s", string(bodyBytes))
+		return "", fmt.Errorf("error al obtener token de acceso. Respuesta: %s", string(bodyBytes))
 	}
 
 	return tokenData.AccessToken, nil
@@ -398,7 +398,7 @@ func sendMicrosoftGraphEmail(mailData mailData) error {
 	accessToken, err := getMicrosoftGraphToken()
 	if err != nil {
 		log.ToDiscord(log.HookChannelLog, "❌ Error en SendEmail (Token): "+err.Error())
-		return fmt.Errorf("error de configuración del servidor") // Mensaje genérico para el frontend
+		return fmt.Errorf("error de configuración del servidor: %w", err) // Mensaje genérico para el frontend
 	}
 
 	mailReq.Header.Set("Authorization", fmt.Sprintf("Bearer %s", accessToken))
@@ -413,7 +413,7 @@ func sendMicrosoftGraphEmail(mailData mailData) error {
 
 	if resp.StatusCode != http.StatusAccepted && resp.StatusCode != http.StatusOK {
 		bodyBytes, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("error Graph API (%d): %s", resp.StatusCode, string(bodyBytes))
+		return fmt.Errorf("error del servidor Graph API (%d): %s", resp.StatusCode, string(bodyBytes))
 	}
 
 	return nil
