@@ -80,7 +80,7 @@ func (m *StationSiarRepository) GetData() StationRepoResponse {
 	end_date := m.DateRange.EndDate
 
 	q := u.Query()
-	q.Set("id", m.StationName)
+	q.Set("Id", m.StationName)
 	q.Set("FechaInicial", start_date.Format("2006-01-02"))
 	q.Set("FechaFinal", end_date.Format("2006-01-02"))
 	q.Set("token", m.APIKey)
