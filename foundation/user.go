@@ -330,6 +330,14 @@ func (m *User) Delete(request *BaseRequest) BaseResponse {
 
 }
 
+func (m *User) DeletePermanent(request *BaseRequest) BaseResponse {
+
+	request.SetFindOptions(m.GetFindOptions(request))
+	request.Model = m
+
+	return m.BaseDelete(*request)
+}
+
 func (m *User) GetUserLog() *UserLog {
 
 	if m.ID == nil {
