@@ -1493,6 +1493,17 @@ func ContainsStr(phrase string, value string) bool {
 
 func ContainsStrInList(list []string, value string) bool {
 	for _, text := range list {
+		if strings.Contains(text, value) {
+			return true
+		}
+	}
+	return false
+}
+
+// ListContainsStr checks if any element from the list is contained within the value string
+// Example: ListContainsStr(["weitec", "smtagrotech"], "test@weitec.com") returns true
+func ListContainsStr(list []string, value string) bool {
+	for _, text := range list {
 		if strings.Contains(value, text) {
 			return true
 		}
