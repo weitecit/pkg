@@ -164,9 +164,11 @@ type BaseModel struct {
 	SourceID   string     `json:"source_id,omitempty" bson:"source_id"`
 	SourceType SourceType `json:"source_tlabype,omitempty" bson:"source_type,omitempty"`
 	Version    int        `json:"version,omitempty" bson:"version,omitempty"`
-	Touched    bool       `json:"touched,omitempty" bson:"-"`
+	Notes      string     `json:"notes,omitempty" bson:"notes,omitempty"`
 	ParentID   string     `json:"parent_id" bson:"parent_id,omitempty"`
-	LabelsNot  *Labels    `json:"labels_not,omitempty" bson:"-"`
+	Touched    bool       `json:"touched,omitempty" bson:"-"`
+	// not label included filter only
+	LabelsNot *Labels `json:"labels_not,omitempty" bson:"-"`
 }
 
 func (m *BaseModel) CompareLabels(labels Labels) bool {
