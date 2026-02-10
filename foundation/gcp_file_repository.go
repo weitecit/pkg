@@ -20,6 +20,7 @@ type GCSFileRepository struct {
 	FileID         string
 	FileName       string
 	Path           string
+	PathPrefix     string
 	File           io.Reader
 	RepositoryPath string
 	client         *storage.Client
@@ -38,12 +39,18 @@ func (m *GCSFileRepository) ToJSON() string {
 }
 
 func NewGCSFileRepository(request FileRepoRequest) (GCSFileRepository, error) {
+	pathPrefix := request.PathPrefix
+	if pathPrefix == "" {
+		pathPrefix = "data" // Default to "data" for backward compatibility
+	}
+
 	repo := GCSFileRepository{
-		FileID:   request.FileID,
-		FileName: request.FileName,
-		Path:     request.Folder,
-		File:     request.File,
-		User:     request.User,
+		FileID:     request.FileID,
+		FileName:   request.FileName,
+		Path:       request.Folder,
+		PathPrefix: pathPrefix,
+		File:       request.File,
+		User:       request.User,
 	}
 
 	if !request.User.IsValid() {
@@ -95,7 +102,11 @@ func (m *GCSFileRepository) Save() FileRepoResponse {
 
 	m.bucket = utils.GetEnv("BUCKET_NAME")
 
-	path := "data/" + m.Path + "/" + m.FileID
+	pathPrefix := m.PathPrefix
+	if pathPrefix == "" {
+		pathPrefix = "data"
+	}
+	path := pathPrefix + "/" + m.Path + "/" + m.FileID
 
 	wc := client.Bucket(m.bucket).Object(path).NewWriter(ctx)
 	if _, err = io.Copy(wc, m.File); err != nil {
@@ -150,16 +161,26 @@ func (m *GCSFileRepository) Download() FileRepoResponse {
 
 	m.bucket = utils.GetEnv("BUCKET_NAME")
 
-	path := "data/" + m.Path + "/" + m.FileID
+	pathPrefix := m.PathPrefix
+	if pathPrefix == "" {
+		pathPrefix = "data"
+	}
+	path := pathPrefix + "/" + m.Path + "/" + m.FileID
+	log.Infof("GCSFileRepository.Download: Attempting to download from gs://%s/%s (prefix: %s)", m.bucket, path, pathPrefix)
+
 	rc, err := client.Bucket(m.bucket).Object(path).NewReader(ctx)
 	if err != nil {
+		log.Errf("GCSFileRepository.Download: Failed to read object gs://%s/%s: %v", m.bucket, path, err)
 		return FileRepoResponse{Error: err}
 	}
 
 	content, err := io.ReadAll(rc)
 	if err != nil {
+		log.Errf("GCSFileRepository.Download: Failed to read content from gs://%s/%s: %v", m.bucket, path, err)
 		return FileRepoResponse{Error: err}
 	}
+
+	log.Infof("GCSFileRepository.Download: Successfully downloaded %d bytes from gs://%s/%s", len(content), m.bucket, path)
 
 	return FileRepoResponse{
 		Content: content,
@@ -185,7 +206,11 @@ func (m *GCSFileRepository) Open() FileRepoResponse {
 		return *response
 	}
 
-	path := "data/" + m.Path + "/" + m.FileID
+	pathPrefix := m.PathPrefix
+	if pathPrefix == "" {
+		pathPrefix = "data"
+	}
+	path := pathPrefix + "/" + m.Path + "/" + m.FileID
 	ctx := context.Background()
 	rc, err := m.client.Bucket(m.bucket).Object(path).NewReader(ctx)
 	if err != nil {
@@ -240,7 +265,11 @@ func (m *GCSFileRepository) Delete() FileRepoResponse {
 
 	m.bucket = utils.GetEnv("BUCKET_NAME")
 
-	path := "data/" + m.Path + "/" + m.FileID
+	pathPrefix := m.PathPrefix
+	if pathPrefix == "" {
+		pathPrefix = "data"
+	}
+	path := pathPrefix + "/" + m.Path + "/" + m.FileID
 	err = client.Bucket(m.bucket).Object(path).Delete(ctx)
 	if err != nil {
 		return FileRepoResponse{Error: err}

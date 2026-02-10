@@ -40,12 +40,13 @@ func (m FileRepoType) GetFileRepoType(s string) FileRepoType {
 }
 
 type FileRepoRequest struct {
-	FileID   string
-	Folder   string
-	FileName string
-	File     io.Reader
-	RepoType FileRepoType
-	User     User
+	FileID     string
+	Folder     string
+	FileName   string
+	File       io.Reader
+	RepoType   FileRepoType
+	User       User
+	PathPrefix string // Optional: custom path prefix (e.g., "maps", "data"). Defaults to "data" if empty
 }
 
 func (m *FileRepoRequest) ToJSON() string {

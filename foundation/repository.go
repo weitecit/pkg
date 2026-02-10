@@ -178,8 +178,8 @@ func (m *FindOptions) AddGreatOrEqual(name string, value interface{}) {
 }
 
 func (m *FindOptions) AddRange(nameFrom string, valueFrom interface{}, nameTo string, valueTo interface{}) {
-	m.AddComplex(nameFrom, FilterOperatorGreat, valueFrom)
-	m.AddComplex(nameTo, FilterOperatorLess, valueTo)
+	m.AddComplex(nameFrom, FilterOperatorGreatOrEqual, valueFrom)
+	m.AddComplex(nameTo, FilterOperatorLessOrEqual, valueTo)
 }
 
 func (m *FindOptions) AddIn(name string, value interface{}) {
