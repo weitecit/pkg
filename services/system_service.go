@@ -2,6 +2,7 @@ package services
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -19,6 +20,7 @@ import (
 	"github.com/weitecit/pkg/utils"
 
 	"github.com/golang-jwt/jwt/v5"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 type mailData struct {
@@ -26,6 +28,42 @@ type mailData struct {
 	To      string `json:"to"`
 	Subject string `json:"subject"`
 	Body    string `json:"body"`
+}
+
+// getUserRoleFromMongoDB consulta MongoDB para obtener el rol real del usuario
+func getUserRoleFromMongoDB(userID interface{}) string {
+	if userID == nil {
+		return ""
+	}
+
+	mongoRepo := foundation.MongoRepository{
+		ConnectionString: utils.GetEnv("MONGO_REPO"),
+		DataBase:         "main",
+	}
+
+	db, err := mongoRepo.GetDB()
+	if err != nil || db == nil {
+		return ""
+	}
+
+	collection := db.Collection("users")
+	var result bson.M
+	err = collection.FindOne(context.Background(), bson.M{"_id": userID}).Decode(&result)
+	if err != nil {
+		return ""
+	}
+
+	rolePermData, ok := result["rolepermission"].(bson.M)
+	if !ok {
+		return ""
+	}
+
+	role, ok := rolePermData["role"].(string)
+	if !ok {
+		return ""
+	}
+
+	return role
 }
 
 // newBaseRequestWithModel allows tests to override foundation.NewBaseRequestWithModel
@@ -112,11 +150,35 @@ func CreateWebToken(user foundation.User) (string, error) {
 	}
 
 	userRoles := []UserRole{}
-	for _, permission := range user.Roles {
+
+	// Para usuarios client, consultar MongoDB para obtener el rol real
+	if user.HasLabel(foundation.LabelClient) && user.RepoID != "" {
+		// Consultar MongoDB para obtener el rol real del usuario
+		roleFromDB := getUserRoleFromMongoDB(user.ID)
+		if roleFromDB != "" {
+			userRole := UserRole{
+				PermissionID:   user.RepoID,
+				PermissionType: float64(foundation.PermissionTypeFull),
+				Role:           roleFromDB,
+			}
+			userRoles = append(userRoles, userRole)
+		}
+	} else if len(user.Roles) > 0 {
+		// Para usuarios no-client, usar user.Roles si tiene elementos
+		for _, permission := range user.Roles {
+			userRole := UserRole{
+				PermissionID:   permission.PermissionID,
+				PermissionType: float64(permission.PermissionType),
+				Role:           string(permission.Role),
+			}
+			userRoles = append(userRoles, userRole)
+		}
+	} else if user.RolePermission.PermissionID != "" {
+		// Si RolePermission tiene datos, usarlo
 		userRole := UserRole{
-			PermissionID:   permission.PermissionID,
-			PermissionType: float64(permission.PermissionType),
-			Role:           string(permission.Role),
+			PermissionID:   user.RolePermission.PermissionID,
+			PermissionType: float64(user.RolePermission.PermissionType),
+			Role:           string(user.RolePermission.Role),
 		}
 		userRoles = append(userRoles, userRole)
 	}

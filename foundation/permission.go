@@ -216,7 +216,7 @@ func (m *PermissionCloud) GetPermission(user *User) (Permission, error) {
 		return Permission{}, errors.New("PermissionCloud.GetPermission: Permissions are empty")
 	}
 
-	role := user.Role
+	role := user.RolePermission.Role
 	roleStr := role.ToString()
 	userID := user.GetIDStr()
 

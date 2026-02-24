@@ -57,22 +57,22 @@ func GetValueToObjectId(container map[string]interface{}, key string) *primitive
 type (
 	User struct {
 		// El external ID es el ID de auth0
-		BaseModel     `bson:",inline"`
-		Nick          string          `json:"nick" bson:"nick"`
-		Username      string          `json:"username" bson:"username"`
-		ContactID     string          `json:"contact_id" bson:"contact_id"`
-		Email         string          `json:"email" bson:"email"`
-		Password      string          `json:"password" bson:"password"`
-		Licenses      []string        `json:"licenses" bson:"licenses"`
-		Connection    string          `json:"connection" bson:"connection"`
-		Session       DateRange       `json:"session" bson:"session"`
-		ExternalToken string          `json:"external_token" bson:"external_token"`
-		Avatar        string          `json:"avatar" bson:"avatar"`
-		SysNotify     []SysNotify     `json:"sys_notify" bson:"sys_notify"`
-		Roles         RolePermissions `json:"roles" bson:"-"`
-		RolePermission
-		SpaceID        string `json:"space_id" bson:"-"`
-		ChangePassword bool   `json:"change_password" bson:"-"`
+		BaseModel      `bson:",inline"`
+		Nick           string          `json:"nick" bson:"nick"`
+		Username       string          `json:"username" bson:"username"`
+		ContactID      string          `json:"contact_id" bson:"contact_id"`
+		Email          string          `json:"email" bson:"email"`
+		Password       string          `json:"password" bson:"password"`
+		Licenses       []string        `json:"licenses" bson:"licenses"`
+		Connection     string          `json:"connection" bson:"connection"`
+		Session        DateRange       `json:"session" bson:"session"`
+		ExternalToken  string          `json:"external_token" bson:"external_token"`
+		Avatar         string          `json:"avatar" bson:"avatar"`
+		SysNotify      []SysNotify     `json:"sys_notify" bson:"sys_notify"`
+		Roles          RolePermissions `json:"roles" bson:"-"`
+		RolePermission RolePermission  `json:"rolepermission" bson:"rolepermission,omitempty"`
+		SpaceID        string          `json:"space_id" bson:"-"`
+		ChangePassword bool            `json:"change_password" bson:"-"`
 	}
 )
 
@@ -511,6 +511,11 @@ func (m *User) GetFromMap(token map[string]interface{}) error {
 				Role:           SpaceRole(permission["Role"].(string)),
 			}
 			blockPermissions = append(blockPermissions, blockPermission)
+
+			// Asignar el RolePermission correspondiente al repo_id del usuario
+			if blockPermission.PermissionID == m.RepoID {
+				m.RolePermission = blockPermission
+			}
 		}
 
 	}
