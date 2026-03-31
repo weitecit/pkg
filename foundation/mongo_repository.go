@@ -1099,7 +1099,7 @@ func (m *MongoRepository) RepoBackup(request RepoRequest, backupID string) RepoR
 	out := "backup/" + m.DataBase + "/" + backupID
 	db := m.DataBase
 
-	cmd := exec.Command("mongodump", "--db", db, "--out", out)
+	cmd := exec.Command("mongodump", "--uri", m.ConnectionString, "--db", db, "--out", out)
 	err := cmd.Run()
 	if err != nil {
 		return RepoResponse{Error: err}
@@ -1111,13 +1111,18 @@ func (m *MongoRepository) RepoBackup(request RepoRequest, backupID string) RepoR
 func (m *MongoRepository) RepoRestore(request RepoRequest, backupID string) RepoResponse {
 	db := m.DataBase
 
+	env := utils.GetEnv("ENVIRONMENT")
+	if env == "PRO" {
+		return RepoResponse{Error: errors.New("MongoRepository.RepoRestore: no se puede restaurar en entorno PRO")}
+	}
+
 	err := m.DeleteDatabase(m.GetConnection(), m.DataBase)
 	if err != nil {
 		return RepoResponse{Error: err}
 	}
 	out := "backup/" + db + "/" + backupID + "/" + db
 
-	cmd := exec.Command("mongorestore", "--db", db, out)
+	cmd := exec.Command("mongorestore", "--uri", m.ConnectionString, "--db", db, out)
 	err = cmd.Run()
 	if err != nil {
 		return RepoResponse{Error: err}
