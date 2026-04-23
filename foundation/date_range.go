@@ -163,10 +163,15 @@ func (m DateRange) GetWeek() int {
 }
 
 func (m *DateRange) GetDateRangeInWeek() *DateRange {
-	// get monday
-	monday := m.StartDate.AddDate(0, 0, -int(m.StartDate.Weekday()))
+	weekday := m.StartDate.Weekday()
 
-	// get monday plus 6 days
+	// Calculate days to subtract to reach Monday (Go: Sunday=0, Monday=1, ..., Saturday=6)
+	daysToMonday := int(weekday) - 1
+	if daysToMonday < 0 {
+		daysToMonday = 6 // Sunday: go back 6 days to previous Monday
+	}
+
+	monday := m.StartDate.AddDate(0, 0, -daysToMonday)
 	sunday := monday.AddDate(0, 0, 6)
 
 	return &DateRange{
