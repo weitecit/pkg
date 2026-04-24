@@ -1015,6 +1015,48 @@ func (m *MongoRepository) GetFilter(filterOptions FindOptions) (map[string]inter
 		andFilters = append(andFilters, bson.M{filter.Key: filterItem})
 	}
 
+	// Process FiltersOr (OR conditions)
+	for _, filterOr := range filterOptions.FiltersOr {
+		if len(filterOr) == 0 {
+			continue
+		}
+
+		orConditions := []bson.M{}
+		for _, filter := range filterOr {
+			// Detect if the value is a date string and convert it
+			if strVal, ok := filter.Value.(string); ok {
+				var parsedTime time.Time
+				var err error
+
+				parsedTime, err = time.Parse(time.RFC3339, strVal)
+				if err != nil {
+					parsedTime, err = time.Parse("2006-01-02", strVal)
+					if err != nil {
+						parsedTime, err = time.Parse("2006-01-02T15:04:05", strVal)
+						if err != nil {
+							parsedTime, err = time.Parse("2006-01-02T15:04:05-07:00", strVal)
+							if err != nil {
+								goto skipDateConversionOr
+							}
+						}
+					}
+				}
+				filter.Value = parsedTime
+			}
+		skipDateConversionOr:
+
+			filterItem, err := m.getFilterItem(filter)
+			if err != nil {
+				return map[string]interface{}{}, err
+			}
+			orConditions = append(orConditions, bson.M{filter.Key: filterItem})
+		}
+
+		if len(orConditions) > 0 {
+			andFilters = append(andFilters, bson.M{"$or": orConditions})
+		}
+	}
+
 	// If we have any andFilters, combine them with the main result
 	if len(andFilters) > 0 {
 		result["$and"] = andFilters
@@ -1061,13 +1103,26 @@ func (m *MongoRepository) getFilterItem(filter Filter) (interface{}, error) {
 }
 
 func (m *MongoRepository) GetOrder(filterOptions FindOptions) map[string]interface{} {
-	// if m.ConnectionString == "" {
-	// 	err := errors.New("MongoRepository.GetDB: connection string can not be empty")
-	println("•••••••••••••••••••••••••••••••••")
-	println("GetOrder Not implemented")
-	println("•••••••••••••••••••••••••••••••••")
-	return bson.M{}
+	result := bson.M{}
 
+	if filterOptions.Order == nil || len(*filterOptions.Order) == 0 {
+		return result
+	}
+
+	log.Infof("GetOrder: processing %d orders", len(*filterOptions.Order))
+	for _, order := range *filterOptions.Order {
+		log.Infof("GetOrder: field=%s, direction=%d", order.Field, order.Direction)
+
+		// Map common field aliases to MongoDB field names
+		fieldName := order.Field
+		if fieldName == "id" {
+			fieldName = "_id"
+		}
+
+		result[fieldName] = order.Direction
+	}
+
+	return result
 }
 
 func (m *MongoRepository) GetType() RepoType {

@@ -353,10 +353,11 @@ func FillParams(c *gin.Context, request *services.ServiceRequest) error {
 	field := c.Query("order")
 	orderDirection := c.Query("orderDirection")
 	if field != "" && orderDirection != "" {
-		if orderDirection == "ascendent" {
+		// Accept multiple variants: asc/desc, ascendent/descendent, ascending/descending
+		if orderDirection == "asc" || orderDirection == "ascendent" || orderDirection == "ascending" {
 			request.AddOrderAsc(field)
 		}
-		if orderDirection == "descendent" {
+		if orderDirection == "desc" || orderDirection == "descendent" || orderDirection == "descending" {
 			request.AddOrderDesc(field)
 		}
 	}
