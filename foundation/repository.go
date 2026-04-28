@@ -258,6 +258,65 @@ func (m *FindOptions) AddMultiple(value FilterOr) {
 	m.FiltersOr = append(m.FiltersOr, value)
 }
 
+// AddSearchTerms adds a search filter for multiple terms across multiple fields.
+// By default (combineOr = false): each field has its own OR group with all terms
+//   Fields: ["title", "reference"], Terms: ["texto", "tres"]
+//   Result: group 1: (title contains "texto" OR title contains "tres"), group 2: (reference contains "texto" OR reference contains "tres")
+//   Query: (title contains "texto" OR title contains "tres") AND (reference contains "texto" OR reference contains "tres")
+//
+// If combineOr = true: all terms and fields are combined into a single OR group
+//   Fields: ["title", "reference"], Terms: ["texto", "tres"]
+//   Result: (title contains "texto" OR title contains "tres" OR reference contains "texto" OR reference contains "tres")
+//   Query: (title contains "texto" OR title contains "tres" OR reference contains "texto" OR reference contains "tres")
+func (m *FindOptions) AddSearchTerms(fields []string, searchTerms []string, operator FilterOperator, combineOr ...bool) {
+	if len(fields) == 0 || len(searchTerms) == 0 {
+		return
+	}
+
+	// Default to Contains if not specified
+	if operator == "" {
+		operator = FilterOperatorContains
+	}
+
+	// Initialize FiltersOr if nil
+	if m.FiltersOr == nil {
+		m.FiltersOr = []FilterOr{}
+	}
+
+	// Check if we should combine all into a single OR group
+	shouldCombine := len(combineOr) > 0 && combineOr[0]
+
+if shouldCombine {
+		// Combine all term + field combinations into ONE OR group
+		filterOr := FilterOr{}
+		for _, term := range searchTerms {
+			for _, field := range fields {
+				filterOr = append(filterOr, Filter{
+					Key:      field,
+					Operator: operator,
+					Value:    term,
+				})
+			}
+		}
+		m.FiltersOr = append(m.FiltersOr, filterOr)
+	} else {
+		// Default: each field creates its own OR group (one group per field, all terms in that group)
+		// fields: ["title", "reference"], terms: ["texto", "tres"]
+		// Result: group1: (title texto OR title tres), group2: (reference texto OR reference tres)
+		for _, field := range fields {
+			filterOr := FilterOr{}
+			for _, term := range searchTerms {
+				filterOr = append(filterOr, Filter{
+					Key:      field,
+					Operator: operator,
+					Value:    term,
+				})
+			}
+			m.FiltersOr = append(m.FiltersOr, filterOr)
+		}
+	}
+}
+
 func NewFindOptions() *FindOptions {
 	return &FindOptions{
 		Filters:   []Filter{},

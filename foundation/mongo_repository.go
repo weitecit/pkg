@@ -1016,12 +1016,13 @@ func (m *MongoRepository) GetFilter(filterOptions FindOptions) (map[string]inter
 	}
 
 	// Process FiltersOr (OR conditions)
+	// Combine all FilterOr groups into a single $or condition
+	allOrConditions := []bson.M{}
 	for _, filterOr := range filterOptions.FiltersOr {
 		if len(filterOr) == 0 {
 			continue
 		}
 
-		orConditions := []bson.M{}
 		for _, filter := range filterOr {
 			// Detect if the value is a date string and convert it
 			if strVal, ok := filter.Value.(string); ok {
@@ -1049,12 +1050,13 @@ func (m *MongoRepository) GetFilter(filterOptions FindOptions) (map[string]inter
 			if err != nil {
 				return map[string]interface{}{}, err
 			}
-			orConditions = append(orConditions, bson.M{filter.Key: filterItem})
+			allOrConditions = append(allOrConditions, bson.M{filter.Key: filterItem})
 		}
+	}
 
-		if len(orConditions) > 0 {
-			andFilters = append(andFilters, bson.M{"$or": orConditions})
-		}
+	// Add all OR conditions as a single $or group
+	if len(allOrConditions) > 0 {
+		andFilters = append(andFilters, bson.M{"$or": allOrConditions})
 	}
 
 	// If we have any andFilters, combine them with the main result
