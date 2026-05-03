@@ -1168,8 +1168,7 @@ func (m *MongoRepository) RepoBackup(request RepoRequest, backupID string) RepoR
 func (m *MongoRepository) RepoRestore(request RepoRequest, backupID string) RepoResponse {
 	db := m.DataBase
 
-	env := utils.GetEnv("ENVIRONMENT")
-	if env == "PRO" {
+	if strings.Contains(strings.ToLower(m.ConnectionString), "pro") {
 		return RepoResponse{Error: errors.New("MongoRepository.RepoRestore: no se puede restaurar en entorno PRO")}
 	}
 

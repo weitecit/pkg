@@ -260,14 +260,16 @@ func (m *FindOptions) AddMultiple(value FilterOr) {
 
 // AddSearchTerms adds a search filter for multiple terms across multiple fields.
 // By default (combineOr = false): each field has its own OR group with all terms
-//   Fields: ["title", "reference"], Terms: ["texto", "tres"]
-//   Result: group 1: (title contains "texto" OR title contains "tres"), group 2: (reference contains "texto" OR reference contains "tres")
-//   Query: (title contains "texto" OR title contains "tres") AND (reference contains "texto" OR reference contains "tres")
+//
+//	Fields: ["title", "reference"], Terms: ["texto", "tres"]
+//	Result: group 1: (title contains "texto" OR title contains "tres"), group 2: (reference contains "texto" OR reference contains "tres")
+//	Query: (title contains "texto" OR title contains "tres") AND (reference contains "texto" OR reference contains "tres")
 //
 // If combineOr = true: all terms and fields are combined into a single OR group
-//   Fields: ["title", "reference"], Terms: ["texto", "tres"]
-//   Result: (title contains "texto" OR title contains "tres" OR reference contains "texto" OR reference contains "tres")
-//   Query: (title contains "texto" OR title contains "tres" OR reference contains "texto" OR reference contains "tres")
+//
+//	Fields: ["title", "reference"], Terms: ["texto", "tres"]
+//	Result: (title contains "texto" OR title contains "tres" OR reference contains "texto" OR reference contains "tres")
+//	Query: (title contains "texto" OR title contains "tres" OR reference contains "texto" OR reference contains "tres")
 func (m *FindOptions) AddSearchTerms(fields []string, searchTerms []string, operator FilterOperator, combineOr ...bool) {
 	if len(fields) == 0 || len(searchTerms) == 0 {
 		return
@@ -286,7 +288,7 @@ func (m *FindOptions) AddSearchTerms(fields []string, searchTerms []string, oper
 	// Check if we should combine all into a single OR group
 	shouldCombine := len(combineOr) > 0 && combineOr[0]
 
-if shouldCombine {
+	if shouldCombine {
 		// Combine all term + field combinations into ONE OR group
 		filterOr := FilterOr{}
 		for _, term := range searchTerms {
