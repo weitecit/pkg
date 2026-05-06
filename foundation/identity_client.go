@@ -1,12 +1,12 @@
 package foundation
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -122,16 +122,29 @@ func (c *IdentityClient) fetchClientCredentials(scope string) (tokenEntry, error
 }
 
 func (c *IdentityClient) requestToken(req tokenRequest) (tokenEntry, error) {
-	body, err := json.Marshal(req)
-	if err != nil {
-		return tokenEntry{}, err
+	form := url.Values{}
+	form.Set("grant_type", req.GrantType)
+	form.Set("company_id", req.CompanyID)
+	if req.ClientID != "" {
+		form.Set("client_id", req.ClientID)
+	}
+	if req.ClientSecret != "" {
+		form.Set("client_secret", req.ClientSecret)
+	}
+	if req.Scope != "" {
+		form.Set("scope", req.Scope)
+	}
+	if req.RefreshToken != "" {
+		form.Set("refresh_token", req.RefreshToken)
 	}
 
-	httpReq, err := http.NewRequestWithContext(context.Background(), http.MethodPost, c.baseURL+"/api/v1/oauth/token", bytes.NewReader(body))
+	body := form.Encode()
+
+	httpReq, err := http.NewRequestWithContext(context.Background(), http.MethodPost, c.baseURL+"/api/v1/oauth/token", strings.NewReader(body))
 	if err != nil {
 		return tokenEntry{}, err
 	}
-	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	resp, err := c.httpClient.Do(httpReq)
 	if err != nil {

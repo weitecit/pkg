@@ -1,10 +1,10 @@
 package foundation
 
 import (
-	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -16,11 +16,18 @@ func decodeTokenRequest(t *testing.T, r *http.Request) tokenRequest {
 	if err != nil {
 		t.Fatalf("read body: %v", err)
 	}
-	var req tokenRequest
-	if err := json.Unmarshal(body, &req); err != nil {
-		t.Fatalf("decode body: %v", err)
+	values, err := url.ParseQuery(string(body))
+	if err != nil {
+		t.Fatalf("parse form body: %v", err)
 	}
-	return req
+	return tokenRequest{
+		GrantType:    values.Get("grant_type"),
+		ClientID:     values.Get("client_id"),
+		ClientSecret: values.Get("client_secret"),
+		Scope:        values.Get("scope"),
+		RefreshToken: values.Get("refresh_token"),
+		CompanyID:    values.Get("company_id"),
+	}
 }
 
 func TestIdentityClientGetTokenUsesClientCredentialsAndCachesToken(t *testing.T) {
