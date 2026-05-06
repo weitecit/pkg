@@ -21,6 +21,7 @@ var (
 	HookChannelWarning HookChannel = HookChannel(os.Getenv("DISCORD_CHANNEL_WARNING"))
 	HookChannelErr     HookChannel = HookChannel(os.Getenv("DISCORD_CHANNEL_ERR"))
 	HookChannelAgtech  HookChannel = HookChannel(os.Getenv("DISCORD_CHANNEL_AGTECH"))
+	HookChanneAdmin    HookChannel = HookChannel(os.Getenv("DISCORD_CHANNEL_ADMIN"))
 )
 
 type Message struct {
