@@ -36,8 +36,9 @@ const (
 
 	LabelLink Label = "link"
 
-	LabelDraft Label = "draft"
-	LabelError Label = "error"
+	LabelDraft    Label = "draft"
+	LabelExceeded Label = "exceeded"
+	LabelError    Label = "error"
 
 	LabelSupport     Label = "support"
 	LabelNoData      Label = "no_data"
