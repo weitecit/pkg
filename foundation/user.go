@@ -71,8 +71,9 @@ type (
 		SysNotify      []SysNotify     `json:"sys_notify" bson:"sys_notify"`
 		Roles          RolePermissions `json:"roles" bson:"-"`
 		RolePermission RolePermission  `json:"rolepermission" bson:"rolepermission,omitempty"`
-		SpaceID        string          `json:"space_id" bson:"-"`
-		ChangePassword bool            `json:"change_password" bson:"-"`
+		SpaceID         string          `json:"space_id" bson:"-"`
+		ChangePassword  bool            `json:"change_password" bson:"-"`
+		AllowedSpaceIDs []string        `json:"allowed_space_ids" bson:"-"`
 	}
 )
 
@@ -523,6 +524,8 @@ func (m *User) GetFromMap(token map[string]interface{}) error {
 
 	labels := utils.GetValueToArrayStr(token, "UserLabels")
 	m.LabelFromStrings(labels...)
+
+	m.AllowedSpaceIDs = utils.GetValueToArrayStr(token, "AllowedSpaceIDs")
 
 	if !m.IsValid() {
 		return errors.New("user is not valid")

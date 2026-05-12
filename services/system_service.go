@@ -30,6 +30,53 @@ type mailData struct {
 	Body    string `json:"body"`
 }
 
+// getAllowedSpaceIDsFromMongoDB returns the space_ids of parcel blocks where the user is a member.
+func getAllowedSpaceIDsFromMongoDB(userIDStr string, repoID string) []string {
+	if userIDStr == "" || repoID == "" {
+		return nil
+	}
+
+	mongoRepo := foundation.MongoRepository{
+		ConnectionString: utils.GetEnv("MONGO_REPO"),
+		DataBase:         "main",
+	}
+
+	db, err := mongoRepo.GetDB()
+	if err != nil || db == nil {
+		return nil
+	}
+
+	collection := db.Collection("blocks")
+	cursor, err := collection.Find(
+		context.Background(),
+		bson.M{
+			"block_type":     "space",
+			"block_type_sub": "parcel",
+			"repo_id":        repoID,
+			"properties.members": bson.M{
+				"$elemMatch": bson.M{"user_id": userIDStr},
+			},
+		},
+	)
+	if err != nil {
+		return nil
+	}
+	defer cursor.Close(context.Background())
+
+	var spaceIDs []string
+	for cursor.Next(context.Background()) {
+		var result bson.M
+		if err := cursor.Decode(&result); err != nil {
+			continue
+		}
+		if spaceID, ok := result["space_id"].(string); ok && spaceID != "" {
+			spaceIDs = append(spaceIDs, spaceID)
+		}
+	}
+
+	return spaceIDs
+}
+
 // getUserRoleFromMongoDB consulta MongoDB para obtener el rol real del usuario
 func getUserRoleFromMongoDB(userID interface{}) string {
 	if userID == nil {
@@ -150,6 +197,7 @@ func CreateWebToken(user foundation.User) (string, error) {
 	}
 
 	userRoles := []UserRole{}
+	var allowedSpaceIDs []string
 
 	// Para usuarios client, consultar MongoDB para obtener el rol real
 	if user.HasLabel(foundation.LabelClient) && user.RepoID != "" {
@@ -162,6 +210,11 @@ func CreateWebToken(user foundation.User) (string, error) {
 				Role:           roleFromDB,
 			}
 			userRoles = append(userRoles, userRole)
+
+			// Para miembros (no owner/admin), incluir en el token las fincas accesibles
+			if roleFromDB == string(foundation.SpaceRoleMember) {
+				allowedSpaceIDs = getAllowedSpaceIDsFromMongoDB(user.GetIDStr(), user.RepoID)
+			}
 		}
 	} else if len(user.Roles) > 0 {
 		// Para usuarios no-client, usar user.Roles si tiene elementos
@@ -184,19 +237,20 @@ func CreateWebToken(user foundation.User) (string, error) {
 	}
 
 	webToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"UserID":       user.ID,
-		"ContactID":    user.ContactID,
-		"DomainID":     user.RepoID,
-		"Username":     user.Username,
-		"UserLanguage": user.Language,
-		"Language":     user.Language,
-		"Roles":        userRoles,
-		"UserLabels":   user.Labels,
-		"Products":     user.Licenses,
-		"Connection":   user.Connection,
-		"SpaceID":      user.SpaceID,
-		"exp":          expiration,
-		"Nick":         user.Nick,
+		"UserID":          user.ID,
+		"ContactID":       user.ContactID,
+		"DomainID":        user.RepoID,
+		"Username":        user.Username,
+		"UserLanguage":    user.Language,
+		"Language":        user.Language,
+		"Roles":           userRoles,
+		"UserLabels":      user.Labels,
+		"Products":        user.Licenses,
+		"Connection":      user.Connection,
+		"SpaceID":         user.SpaceID,
+		"exp":             expiration,
+		"Nick":            user.Nick,
+		"AllowedSpaceIDs": allowedSpaceIDs,
 	})
 
 	signedToken, err := webToken.SignedString([]byte(utils.GetEnv("SECRET_KEY")))
