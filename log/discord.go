@@ -22,6 +22,7 @@ var (
 	HookChannelErr     HookChannel = HookChannel(os.Getenv("DISCORD_CHANNEL_ERR"))
 	HookChannelAgtech  HookChannel = HookChannel(os.Getenv("DISCORD_CHANNEL_AGTECH"))
 	HookChanneAdmin    HookChannel = HookChannel(os.Getenv("DISCORD_CHANNEL_ADMIN"))
+	HookChannelDev     HookChannel = HookChannel(os.Getenv("DISCORD_CHANNEL_DEV"))
 )
 
 type Message struct {
@@ -85,6 +86,10 @@ func sendDiscordMessage(channel HookChannel, message Message) error {
 
 	if env == "local" || env == "test" {
 		return nil
+	}
+
+	if env == "development" {
+		channel = HookChannelDev
 	}
 
 	if channel == "" {
