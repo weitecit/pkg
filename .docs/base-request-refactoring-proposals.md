@@ -4,6 +4,46 @@ Ordenadas de **menor a mayor impacto**. Cada una resuelve el problema anterior y
 
 ---
 
+## Estado actual antes del refactoring (`UserExistsByMail` / `UserExistsByEmail`)
+
+En el código actual, el método existente se llama `UserExistsByEmail` en `services/system_service.go` (equivalente funcional al `UserExistsByMail` mencionado).
+
+```go
+// UserExistsByEmail checks if a user with the given email exists in the database
+func UserExistsByEmail(email string) (bool, error) {
+    systemUser, err := getSystemUser()
+    if err != nil {
+        return false, fmt.Errorf("error getting system user: %v", err)
+    }
+
+    user := &foundation.User{
+        Username: email,
+    }
+
+    // Create a base request
+    baseRequest, err := foundation.NewBaseRequestWithModel(user, *systemUser)
+    if err != nil {
+        return false, fmt.Errorf("error creating base request: %v", err)
+    }
+
+    // Set up the find options to search by email
+    findOptions := user.GetFindOptions(baseRequest)
+    findOptions.AddEquals("username", email)
+    baseRequest.SetFindOptions(findOptions)
+
+    // Execute the find query
+    response := user.Find(baseRequest)
+    if response.Error != nil {
+        return false, response.Error
+    }
+
+    // If we found at least one user with this email, return true
+    return response.TotalRows > 0, nil
+}
+```
+
+---
+
 ## Nivel 1: Usar variable overridable en `UserExistsByEmail`
 
 **Impacto:** Mínimo. Sin cambios de API, sin tocar callers.
